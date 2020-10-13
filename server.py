@@ -117,10 +117,10 @@ def neutrophil_image():
 if __name__ == "__main__":
 
     x_ray_model = attempt_load(app.config["XRAY_WEIGHTS"], map_location='cuda')  # load FP32 model
-    # coccidia_model = attempt_load(app.config["COCCIDIA_WEIGHTS"], map_location='cuda')
-    # neutrophil_model = attempt_load(app.config["NEUTROPHIL_WEIGHTS"], map_location='cuda')
+    coccidia_model = attempt_load(app.config["COCCIDIA_WEIGHTS"], map_location='cuda')
+    neutrophil_model = attempt_load(app.config["NEUTROPHIL_WEIGHTS"], map_location='cuda')
 
 
-    app.run(debug=True)
+    app.run(debug=True,host="0.0.0.0", port = 5655)
 
 

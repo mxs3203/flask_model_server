@@ -5,19 +5,18 @@ from PIL import Image
 import os
 import unittest
 
+
+URL = 'http://overunderapi.ddns.net:5655'
+
 class TestLoginAPI(unittest.TestCase):
     def test_incorrect_login(self):
-        print("Wrong pass example")
-        url = 'http://overunderapi.ddns.net:5655/api/login'
+        url = URL + '/api/login'
         r = requests.post(url,json={'username': 'filipos', 'password':'krivipass'})
-        print(r.status_code)
         self.assertEqual(r.status_code, 401)
 
     def test_correct_login(self):
-        print("Correct login example")
-        url = 'http://overunderapi.ddns.net:5655/api/login'
+        url = URL + '/api/login'
         r = requests.post(url,json={'username': 'filipos', 'password':'Krastavac56'})
-        print(json.loads(r.content.decode("utf-8")))
         token = json.loads(r.content.decode("utf-8"))['token']
 
         self.assertEqual(r.status_code, 200)
@@ -33,7 +32,7 @@ class TestModelAPI(unittest.TestCase):
         with open("token.txt", "r") as file:
             token = file.readlines()
         token = token[0]
-        url = 'http://overunderapi.ddns.net:5655/models/xray'
+        url = URL + '/models/xray'
         my_img = {'image': open('test1.jpg', 'rb')}
         headers = {'token': token}
         headers = headers
@@ -49,7 +48,7 @@ class TestModelAPI(unittest.TestCase):
 
 
     def test_coccidia(self):
-        url = 'http://overunderapi.ddns.net:5655/models/coccidia'
+        url = URL + '/models/coccidia'
         my_img = {'image': open('test2.jpg', 'rb')}
         r = requests.post(url, files=my_img)
         stream = BytesIO(r.content)
@@ -62,7 +61,7 @@ class TestModelAPI(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
 
     def test_neutrophil(self):
-        url = 'http://overunderapi.ddns.net:5655/models/neutrophil'
+        url = URL + '/models/neutrophil'
         my_img = {'image': open('test3.jpg', 'rb')}
         r = requests.post(url, files=my_img)
         stream = BytesIO(r.content)

@@ -2,47 +2,75 @@ from io import BytesIO
 import json
 import requests
 from PIL import Image
-print("Wrong pass example")
-url = 'http://localhost:5000/api/login'
-r = requests.post(url,json={'username': 'filipos', 'password':'krivipass'})
-print(r.status_code)
+import os
+import unittest
 
 
-print("Correct login example")
-url = 'http://localhost:5000/api/login'
-r = requests.post(url,json={'username': 'filipos', 'password':'Krastavac56'})
-print(json.loads(r.content.decode("utf-8")))
-token = json.loads(r.content.decode("utf-8"))['token']
+URL = 'http://overunderapi.ddns.net:5655'
 
-print("Send Xray Img example")
-url = 'http://localhost:5000/models/xray'
-my_img = {'image': open('test1.jpg', 'rb')}
-headers = {'token': token}
-headers = headers
-r = requests.post(url, files=my_img, headers=headers)
-print(r.status_code)
-stream = BytesIO(r.content)
-image = Image.open(stream).convert("RGBA")
-image.save("1.png")
-stream.close()
-#
-#
-url = 'http://localhost:5000/models/coccidia'
-my_img = {'image': open('test2.jpg', 'rb')}
-r = requests.post(url, files=my_img)
-print(r.status_code)
-stream = BytesIO(r.content)
-image = Image.open(stream).convert("RGBA")
-image.save("2.png")
-stream.close()
+class TestLoginAPI(unittest.TestCase):
+    def test_incorrect_login(self):
+        url = URL + '/api/login'
+        r = requests.post(url,json={'username': 'filipos', 'password':'krivipass'})
+        self.assertEqual(r.status_code, 401)
 
-url = 'http://localhost:5000/models/neutrophil'
-my_img = {'image': open('test3.jpg', 'rb')}
-r = requests.post(url, files=my_img)
-print(r.status_code)
-stream = BytesIO(r.content)
-image = Image.open(stream).convert("RGBA")
-stream.close()
-image.save("3.png")
+    def test_correct_login(self):
+        url = URL + '/api/login'
+        r = requests.post(url,json={'username': 'filipos', 'password':'Krastavac56'})
+        token = json.loads(r.content.decode("utf-8"))['token']
+
+        self.assertEqual(r.status_code, 200)
+        self.assertIsNotNone(token)
+
+        # save token for next tests
+        with open("token.txt", "w") as file:
+            file.write(token)
+
+class TestModelAPI(unittest.TestCase):
+
+    def test_xray(self):
+        with open("token.txt", "r") as file:
+            token = file.readlines()
+        token = token[0]
+        url = URL + '/models/xray'
+        my_img = {'image': open('test1.jpg', 'rb')}
+        headers = {'token': token}
+        headers = headers
+        r = requests.post(url, files=my_img, headers=headers)
+        stream = BytesIO(r.content)
+        image = Image.open(stream).convert("RGBA")
+        image.save("1.png")
+        stream.close()
+
+        self.assertIsNotNone(r.content)
+        assert os.path.exists("1.png")
+        self.assertEqual(r.status_code, 200)
+
+
+    def test_coccidia(self):
+        url = URL + '/models/coccidia'
+        my_img = {'image': open('test2.jpg', 'rb')}
+        r = requests.post(url, files=my_img)
+        stream = BytesIO(r.content)
+        image = Image.open(stream).convert("RGBA")
+        image.save("2.png")
+        stream.close()
+
+        self.assertIsNotNone(r.content)
+        assert os.path.exists("2.png")
+        self.assertEqual(r.status_code, 200)
+
+    def test_neutrophil(self):
+        url = URL + '/models/neutrophil'
+        my_img = {'image': open('test3.jpg', 'rb')}
+        r = requests.post(url, files=my_img)
+        stream = BytesIO(r.content)
+        image = Image.open(stream).convert("RGBA")
+        image.save("3.png")
+        stream.close()
+
+        self.assertIsNotNone(r.content)
+        assert os.path.exists("3.png")
+        self.assertEqual(r.status_code, 200)
 
 

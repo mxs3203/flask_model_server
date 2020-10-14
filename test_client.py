@@ -98,20 +98,23 @@ class TestModelAPI(unittest.TestCase):
 
         self.assertEqual(r.status_code, 401)
 
-    # def test_coccidia(self):
-    #     url = URL + '/models/coccidia'
-    #     img_file = open('test2.jpg', 'rb')
-    #     my_img = {'image': img_file}
-    #     r = requests.post(url, files=my_img)
-    #     stream = BytesIO(r.content)
-    #     image = Image.open(stream).convert("RGBA")
-    #     image.save("2.png")
-    #     stream.close()
-    #     img_file.close()
-    #
-    #     self.assertIsNotNone(r.content)
-    #     assert os.path.exists("2.png")
-    #     self.assertEqual(r.status_code, 200)
+    def test_coccidia(self):
+        with open("token_admin.txt", "r") as file:
+            token = file.readlines()
+        token = token[0]
+        url = URL + '/models/coccidia'
+        img_file = open('test2.jpg', 'rb')
+        my_img = {'image': img_file}
+        headers = {'token': token, 'package': 'Imaging'}
+        r = requests.post(url, files=my_img, headers=headers)
+        jsonObj = json.loads(r.content.decode("utf-8"))
+        img_file.close()
+
+        self.assertIsNotNone(jsonObj)
+        self.assertIsNotNone(jsonObj['img_path'])
+        assert os.listdir("recievedImgFolder/coccidia/")
+        assert os.listdir("serverOutput/coccidia/")
+        self.assertEqual(r.status_code, 200)
 
     # def test_neutrophil(self):
     #     url = URL + '/models/neutrophil'

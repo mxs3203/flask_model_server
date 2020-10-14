@@ -8,7 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 from models.experimental import attempt_load
 from sqlalchemy.orm import session
 from yolov5_server_detect import detect
-
+from utils.server_utils import make_recieving_img_name
 
 PIL.Image.MAX_IMAGE_PIXELS = 979515483
 app = Flask(__name__)
@@ -97,7 +97,7 @@ def login():
             response_dict = {'msg': 'success', 'token': token, 'user_role': role, 'packages': packages}
             return make_response(jsonify(response_dict), 200)
         else:
-            return make_response('', 401)
+            return make_response('{}', 401)
 
 
 @app.route("/models/xray", methods=["POST"])
@@ -121,7 +121,7 @@ def xray_image():
                                                iouThrs=app.config["XRAY_CONF_THRES"],
                                                conf_thres=app.config["XRAY_IOU_THRES"],
                                                agnostic_nms=app.config["XRAY_AGNOSTIC_NMS"],
-                                               img_size=512)
+                                               img_size=app.config["XRAY_IMG_SIZE"])
 
             img_db = Img(imgpath=path, small_imgpath=path,uploaded=True,package_id=package_id,user_id=user.id)
             db.session.add(img_db)
@@ -131,7 +131,7 @@ def xray_image():
 
             return jsonify({'msg': 'success', 'img_path':saved_path})
         else:
-            return make_response('', 401)
+            return make_response('{}', 401)
     else:
         return jsonify({'msg': 'fail'})
 
@@ -139,18 +139,33 @@ def xray_image():
 @app.route("/models/coccidia", methods=["POST"])
 def cocidia_image():
     if request.method == "POST" and request.files:
-        img = Image.open(request.files['image'])  # recieve image from post
-        path = os.path.join(app.config["COCCIDIA_IMAGE_UPLOADS"], "predicted.png")  # make path for recieved img
-        img.save(path, "PNG")  # save recieved img
-        # detect on received img
-        saved_path = detect(model=coccidia_model, source=path,
-                                           out=app.config["COCCIDIA_OUTPUT_FOLDER"],
-                                           iouThrs=app.config["COCCIDIA_CONF_THRES"],
-                                           conf_thres=app.config["COCCIDIA_IOU_THRES"],
-                                           agnostic_nms=app.config["COCCIDIA_AGNOSTIC_NMS"],
-                                           img_size=512)
+        token = request.headers['token']
+        package = request.headers['package']
+        package_id = Package.query.filter(Package.name == package).with_entities(Package.id).first()
+        user = db.session.query(User).filter_by(token=token).first()
+        if user is not None and package_id is not None and user.token == token:
+            img = Image.open(request.files['image'])  # recieve image from post
+            name = make_recieving_img_name(app.config["XRAY_IMAGE_UPLOADS"])
+            path = os.path.join(app.config["COCCIDIA_IMAGE_UPLOADS"], name)  # make path for recieved img
+            img.save(path, "PNG")  # save recieved img
 
-        return send_file(saved_path, mimetype="image/png")
+            # detect on received img
+            saved_path = detect(model=coccidia_model, source=path,
+                                               out=app.config["COCCIDIA_OUTPUT_FOLDER"],
+                                               iouThrs=app.config["COCCIDIA_CONF_THRES"],
+                                               conf_thres=app.config["COCCIDIA_IOU_THRES"],
+                                               agnostic_nms=app.config["COCCIDIA_AGNOSTIC_NMS"],
+                                               img_size=app.config["COCCIDIA_IMG_SIZE"])
+            img_db = Img(imgpath=path, small_imgpath=path, uploaded=True, package_id=package_id, user_id=user.id)
+            db.session.add(img_db)
+            img_db = Img(imgpath=saved_path, small_imgpath=saved_path, uploaded=False, package_id=package_id,
+                         user_id=user.id)
+            db.session.add(img_db)
+            db.session.commit()
+
+            return jsonify({'msg': 'success', 'img_path':saved_path})
+        else:
+            return make_response('{}', 401)
     else:
         return jsonify({'msg': 'fail'})
 
@@ -167,21 +182,12 @@ def neutrophil_image():
                                            iouThrs=app.config["NEUTROPHIL_CONF_THRES"],
                                            conf_thres=app.config["NEUTROPHIL_IOU_THRES"],
                                            agnostic_nms=app.config["NEUTROPHIL_AGNOSTIC_NMS"],
-                                           img_size=512, names=['neutrophil'])
+                                           img_size=app.config["NEUTROPHIL_IMG_SIZE"], names=['neutrophil'])
 
         return send_file(saved_path, mimetype="image/png")
     else:
         return jsonify({'msg': 'fail'})
 
-def make_recieving_img_name(configFolder):
-    if not os.listdir(configFolder):
-        name = "1.png"
-    else:
-        files = os.listdir(configFolder)
-        max_num = max([int(str.split(file, sep=".")[0]) for file in files])
-        num = max_num + 1
-        name = str(num) + ".png"
-    return name
 
 if __name__ == "__main__":
     x_ray_model = attempt_load(app.config["XRAY_WEIGHTS"], map_location='cuda')  # load FP32 model

@@ -9,6 +9,7 @@ class Config(object):
     XRAY_OUTPUT_FOLDER = "serverOutput/xray"
     XRAY_CONF_THRES = 0.5
     XRAY_IOU_THRES = 0.5
+    XRAY_IMG_SIZE = 512
 
     # Coccidia
     COCCIDIA_IMAGE_UPLOADS = "recievedImgFolder/coccidia"
@@ -17,6 +18,7 @@ class Config(object):
     COCCIDIA_OUTPUT_FOLDER = "serverOutput/coccidia"
     COCCIDIA_CONF_THRES = 0.8
     COCCIDIA_IOU_THRES = 0.8
+    COCCIDIA_IMG_SIZE = 512
 
     # Neutrophil
     NEUTROPHIL_IMAGE_UPLOADS = "recievedImgFolder/neutrophil"
@@ -25,6 +27,7 @@ class Config(object):
     NEUTROPHIL_OUTPUT_FOLDER = "serverOutput/neutrohpil"
     NEUTROPHIL_CONF_THRES = 0.7
     NEUTROPHIL_IOU_THRES = 0.7
+    NEUTROPHIL_IMG_SIZE =512
 
     # DB
     SQLALCHEMY_DATABASE_URI = 'mysql://root:@localhost:3306/over_under'

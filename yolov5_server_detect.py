@@ -1,25 +1,23 @@
+import os
 import shutil
 import time
 from pathlib import Path
+
 import cv2
 import torch
 from numpy import random
-from utils.datasets import LoadStreams, LoadImages
+from utils.datasets import LoadImages
 from utils.general import (
-    check_img_size, non_max_suppression, apply_classifier, scale_coords,
-    xyxy2xywh, plot_one_box, strip_optimizer, set_logging)
-from utils.torch_utils import select_device, load_classifier, time_synchronized
-import os
+    check_img_size, non_max_suppression, scale_coords,
+    plot_one_box, set_logging)
+from utils.torch_utils import select_device, time_synchronized
 
 
-def detect(model,source, out, img_size, iouThrs, conf_thres,agnostic_nms, names=None):
-
+def detect(model, source, out, img_size, iouThrs, conf_thres, agnostic_nms, names=None):
     # Initialize
     set_logging()
     device = select_device('cuda')
-    if os.path.exists(out):
-        shutil.rmtree(out)  # delete output folder
-    os.makedirs(out)  # make new output folder
+
     half = device.type != 'cpu'  # half precision only supported on CUDA
 
     imgsz = check_img_size(img_size, s=model.stride.max())  # check img_size
@@ -49,7 +47,7 @@ def detect(model,source, out, img_size, iouThrs, conf_thres,agnostic_nms, names=
         pred = model(img, augment=False)[0]
 
         # Apply NMS
-        pred = non_max_suppression(pred, conf_thres, iouThrs, classes=None, agnostic=agnostic_nms )
+        pred = non_max_suppression(pred, conf_thres, iouThrs, classes=None, agnostic=agnostic_nms)
         t2 = time_synchronized()
 
         # Process detections
@@ -84,4 +82,4 @@ def detect(model,source, out, img_size, iouThrs, conf_thres,agnostic_nms, names=
                     cv2.imwrite(save_path, im0)
 
     print('Done. (%.3fs)' % (time.time() - t0))
-    return save_path, im0
+    return save_path

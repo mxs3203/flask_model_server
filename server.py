@@ -70,7 +70,7 @@ class Package_User_Cross(db.Model):
         return '<Cross ID %r>' % self.id
 class Package(db.Model):
     __tablename__ = 'package'
-    id = db.Column(db.Integer, primary_key=True,autoincrement=True )
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True )
     name = db.Column(db.String(45), nullable=False)
 
     def __init__(self,id, name):
@@ -79,6 +79,58 @@ class Package(db.Model):
 
     def __repr__(self):
         return '<Package %r>' % self.name
+
+
+@app.route("/api/getallusers", methods=["GET"])
+def getallusers():
+    if request.method == "GET":
+        token = request.headers['token']
+        results = User.query.filter(User.token == token).first()
+
+        if results is not None and results.user_role == 'admin':
+            results = User.query.join(Package_User_Cross).join(Package).add_columns(Package.name).all()
+            output = {}
+            packages = []
+            for result in results:
+                packages.append(result[1])
+                if output.keys().__contains__(result[0].username):
+                    packages = []
+                else:
+                    output[result[0].username] = {'username': result[0].username, 'name': result[0].name,
+                                              'surname': result[0].surname, 'user_role': result[0].user_role,
+                                              'packages': packages}
+
+
+            return make_response(output, 200)
+        else:
+            return make_response('{}', 401)
+
+
+@app.route("/api/getallimages", methods=["GET"])
+def getallimages():
+    if request.method == "GET":
+        token = request.headers['token']
+        package = request.headers['package']
+        user = User.query.filter(User.token == token).first()
+        package_model = Package.query.filter(Package.name == package).first()
+
+        if user is not None and package_model is not None:
+            results_uploaded = User.query.filter(User.id == user.id).join(Img).join(Package).filter(Package.id == package_model.id).add_columns(Img.imgpath, Img.uploaded).filter(Img.uploaded == True).all()
+            results_generated = User.query.filter(User.id == user.id).join(Img).join(Package).filter(Package.id == package_model.id).add_columns(Img.imgpath, Img.uploaded).filter(Img.uploaded == False).all()
+
+            output = {}
+            cnt = 0
+            uploaded = []
+            generated = []
+            for res in results_uploaded:
+                generated.append(results_generated[cnt][1])
+                uploaded.append(res[1])
+                cnt = cnt + 1
+            output['generated'] = generated
+            output['uploaded'] = uploaded
+            return make_response(output, 200)
+        else:
+            return make_response('{}', 401)
 
 
 @app.route("/api/login", methods=["POST"])
@@ -98,7 +150,7 @@ def login():
             return make_response(jsonify(response_dict), 200)
         else:
             return make_response('{}', 401)
-
+    return make_response('{}', 404)
 
 @app.route("/models/xray", methods=["POST"])
 def xray_image():

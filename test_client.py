@@ -14,12 +14,12 @@ URL = 'http://overunderapi.ddns.net:5655'
 class TestLoginAPI(unittest.TestCase):
     def test_incorrect_login(self):
         url = URL + '/api/login'
-        r = requests.post(url,json={'username': 'filipos', 'password':'krivipass'})
+        r = requests.post(url, json={'username': 'filipos', 'password':'krivipass'})
         self.assertEqual(r.status_code, 401)
 
     def test_correct_login_admin(self):
         url = URL + '/api/login'
-        r = requests.post(url,json={'username': 'filipos', 'password':'Krastavac56'})
+        r = requests.post(url, json={'username': 'filipos', 'password':'Krastavac56'})
         jsonObj = json.loads(r.content.decode("utf-8"))
         token = jsonObj['token']
         role = jsonObj['user_role']
@@ -54,6 +54,56 @@ class TestLoginAPI(unittest.TestCase):
         with open("token_user.txt", "w") as file:
             file.write(token)
 
+class TestAPIEndpoints(unittest.TestCase):
+    def test_get_all_users_admin(self):
+        with open("token_admin.txt", "r") as file:
+            token = file.readlines()
+        token = token[0]
+        url = URL + '/api/getallusers'
+        headers = {'token': token}
+        r = requests.get(url, headers=headers)
+        jsonObj = json.loads(r.content.decode("utf-8"))
+        print(jsonObj)
+        #self.assertEqual(jsonObj, "{'0': {'packages': ['Imaging', 'Finance', 'Sports'], 'username': 'filipos'}, '1': {'packages': ['Finance', 'Sports'], 'username': 'mateo'}}")
+        self.assertEqual(r.status_code, 200)
+
+    def test_get_all_users_user(self):
+        with open("token_user.txt", "r") as file:
+            token = file.readlines()
+        token = token[0]
+        url = URL + '/api/getallusers'
+        headers = {'token': token}
+        r = requests.get(url, headers=headers)
+        self.assertEqual(r.status_code, 401)
+
+    def test_get_all_images(self):
+        with open("token_admin.txt", "r") as file:
+            token = file.readlines()
+        token = token[0]
+        url = URL + '/api/getallimages'
+        headers = {'token': token, 'package': 'Imaging'}
+        r = requests.get(url, headers=headers)
+        jsonObj = json.loads(r.content.decode("utf-8"))
+        print(jsonObj)
+        self.assertNotEqual(jsonObj['generated'], [])
+        self.assertNotEqual(jsonObj['uploaded'], [])
+        self.assertEqual(r.status_code, 200)
+
+    def test_get_all_images_no_images(self):
+        with open("token_user.txt", "r") as file:
+            token = file.readlines()
+        token = token[0]
+        url = URL + '/api/getallimages'
+        headers = {'token': token, 'package': 'Imaging'}
+        r = requests.get(url, headers=headers)
+        jsonObj = json.loads(r.content.decode("utf-8"))
+        print(jsonObj)
+        self.assertEqual(jsonObj['generated'], [])
+        self.assertEqual(jsonObj['uploaded'], [])
+        self.assertEqual(r.status_code, 200)
+
+
+
 class TestModelAPI(unittest.TestCase):
 
     def test_xray(self):
@@ -70,8 +120,8 @@ class TestModelAPI(unittest.TestCase):
 
         self.assertIsNotNone(jsonObj)
         self.assertIsNotNone(jsonObj['img_path'])
-        assert os.listdir("recievedImgFolder/xray/")
-        assert os.listdir("serverOutput/xray/")
+        assert os.listdir("/home/mateo/Desktop/server/recievedImgFolder/xray/")
+        assert os.listdir("/home/mateo/Desktop/server/serverOutput/xray/")
         self.assertEqual(r.status_code, 200)
 
     def test_xray_wrong_token(self):
@@ -112,8 +162,8 @@ class TestModelAPI(unittest.TestCase):
 
         self.assertIsNotNone(jsonObj)
         self.assertIsNotNone(jsonObj['img_path'])
-        assert os.listdir("recievedImgFolder/coccidia/")
-        assert os.listdir("serverOutput/coccidia/")
+        assert os.listdir("/home/mateo/Desktop/server/recievedImgFolder/coccidia/")
+        assert os.listdir("/home/mateo/Desktop/server/serverOutput/coccidia/")
         self.assertEqual(r.status_code, 200)
 
     # def test_neutrophil(self):

@@ -1,4 +1,3 @@
-from io import BytesIO
 import json
 
 import PIL
@@ -17,7 +16,7 @@ class Test1_LoginAPI(unittest.TestCase):
         url = URL + '/api/login'
         r = requests.post(url, json={'username': 'filipos', 'password':'krivipass'})
         self.assertEqual(r.status_code, 401)
-        print("TEST END: Incorrect LOGIN :")
+        print("TEST END: Incorrect LOGIN :\n")
 
     def test_correct_login_admin(self):
         print("TEST: Correct LOGIN admin:")
@@ -31,7 +30,7 @@ class Test1_LoginAPI(unittest.TestCase):
         # save token for next tests
         with open("token_admin.txt", "w") as file:
             file.write(token)
-        print("TEST END: Correct LOGIN admin:")
+        print("TEST END: Correct LOGIN admin: \n")
 
     def test_correct_login_user(self):
         print("TEST: Correct LOGIN :")
@@ -46,7 +45,7 @@ class Test1_LoginAPI(unittest.TestCase):
         # save token for next tests
         with open("token_user.txt", "w") as file:
             file.write(token)
-        print("TEST END: Correct LOGIN :")
+        print("TEST END: Correct LOGIN :\n")
 
     def test_get_user_account(self):
         print("TEST: Get user account:")
@@ -54,14 +53,13 @@ class Test1_LoginAPI(unittest.TestCase):
             token = file.readlines()
         token = token[0]
         url = URL + '/api/user-account'
-        headers = {'token': token}
+        headers = {'TOKEN': token}
         r = requests.get(url, headers=headers)
         jsonObj = json.loads(r.content.decode("utf-8"))
         print(jsonObj)
         self.assertIsNotNone(jsonObj)
         self.assertEqual(r.status_code, 200)
-        print("TEST END: Get user account:")
-
+        print("TEST END: Get user account:\n")
 class Test2_ModelAPI(unittest.TestCase):
     print("MODEL API TESTS Started")
     def test_xray(self):
@@ -72,18 +70,16 @@ class Test2_ModelAPI(unittest.TestCase):
         url = URL + '/models/xray'
         img_file = open('test1.jpg', 'rb')
         my_img = {'image': img_file}
-        headers = {'token': token, 'package-id':'2'}
+        headers = {'TOKEN': token, 'package-id':'2'}
         r = requests.post(url, files=my_img, headers=headers)
         jsonObj = json.loads(r.content.decode("utf-8"))
         img_file.close()
 
         self.assertIsNotNone(jsonObj)
         self.assertIsNotNone(jsonObj['img_path'])
-        assert os.listdir("/home/mateo/Desktop/server/recievedImgFolder/xray/")
-        assert os.listdir("/home/mateo/Desktop/server/serverOutput/xray/")
         self.assertEqual(r.status_code, 200)
 
-        print("TEST END: XRAY Model")
+        print("TEST END: XRAY Model\n")
 
     def test_xray_wrong_token(self):
         print("TEST: XRAY Model wrong token")
@@ -91,12 +87,12 @@ class Test2_ModelAPI(unittest.TestCase):
         url = URL + '/models/xray'
         img_file = open('test1.jpg', 'rb')
         my_img = {'image': img_file}
-        headers = {'token': token, 'package-id': '2'}
+        headers = {'TOKEN': token, 'package-id': '2'}
         r = requests.post(url, files=my_img, headers=headers)
         img_file.close()
 
         self.assertEqual(r.status_code, 401)
-        print("TEST END: XRAY Model wrong token")
+        print("TEST END: XRAY Model wrong token\n")
 
     def test_xray_wrong_package(self):
         print("TEST END: XRAY Model wrong package id")
@@ -106,12 +102,12 @@ class Test2_ModelAPI(unittest.TestCase):
         url = URL + '/models/xray'
         img_file = open('test1.jpg', 'rb')
         my_img = {'image': img_file}
-        headers = {'token': token, 'package-id': 'jkgasjh'}
+        headers = {'TOKEN': token, 'package-id': 'jkgasjh'}
         r = requests.post(url, files=my_img, headers=headers)
         img_file.close()
 
         self.assertEqual(r.status_code, 401)
-        print("TEST END: XRAY Model wrong package id")
+        print("TEST END: XRAY Model wrong package id\n")
 
     def test_coccidia(self):
         print("TEST: Coccidia Model")
@@ -121,17 +117,16 @@ class Test2_ModelAPI(unittest.TestCase):
         url = URL + '/models/coccidia'
         img_file = open('test2.jpg', 'rb')
         my_img = {'image': img_file}
-        headers = {'token': token, 'package-id': '1'}
+        headers = {'TOKEN': token, 'package-id': '1'}
         r = requests.post(url, files=my_img, headers=headers)
         jsonObj = json.loads(r.content.decode("utf-8"))
         img_file.close()
 
         self.assertIsNotNone(jsonObj)
         self.assertIsNotNone(jsonObj['img_path'])
-        assert os.listdir("/home/mateo/Desktop/server/recievedImgFolder/coccidia/")
-        assert os.listdir("/home/mateo/Desktop/server/serverOutput/coccidia/")
+
         self.assertEqual(r.status_code, 200)
-        print("TEST END: Coccidia Model")
+        print("TEST END: Coccidia Model\n")
 
     # def test_neutrophil(self):
     #     url = URL + '/models/neutrophil'
@@ -171,13 +166,13 @@ class Test3_APIEndpoints(unittest.TestCase):
             token = file.readlines()
         token = token[0]
         url = URL + '/api/getallusers'
-        headers = {'token': token}
+        headers = {'TOKEN': token}
         r = requests.get(url, headers=headers)
         jsonObj = json.loads(r.content.decode("utf-8"))
         print(jsonObj)
         #self.assertEqual(jsonObj, "{'0': {'packages': ['Imaging', 'Finance', 'Sports'], 'username': 'filipos'}, '1': {'packages': ['Finance', 'Sports'], 'username': 'mateo'}}")
         self.assertEqual(r.status_code, 200)
-        print("TEST END: GET ALL USERS")
+        print("TEST END: GET ALL USERS\n")
 
     def test_get_all_users_user(self):
         print("TEST: GET ALL USERS-user role")
@@ -185,45 +180,103 @@ class Test3_APIEndpoints(unittest.TestCase):
             token = file.readlines()
         token = token[0]
         url = URL + '/api/getallusers'
-        headers = {'token': token}
+        headers = {'TOKEN': token}
         r = requests.get(url, headers=headers)
         self.assertEqual(r.status_code, 401)
-        print("TEST END: GET ALL USERS-user role")
+        print("TEST END: GET ALL USERS-user role\n")
 
-    def test_get_all_images(self):
-        print("TEST: GET ALL IMAGES")
+    def test_get_all_images_coccidia(self):
+        print("TEST: GET ALL IMAGES - coccidia")
         with open("token_admin.txt", "r") as file:
             token = file.readlines()
         token = token[0]
-        url = URL + '/api/getallimages'
-        headers = {'token': token, 'package-id': '1'}
+        url = URL + '/api/getallimages?package-id=1'
+        headers = {'TOKEN': token}
         r = requests.get(url, headers=headers)
         jsonObj = json.loads(r.content.decode("utf-8"))
         print(jsonObj)
         self.assertNotEqual(jsonObj['generated'], [])
         self.assertNotEqual(jsonObj['uploaded'], [])
         self.assertEqual(r.status_code, 200)
-        print("TEST END: GET ALL IMAGES")
+        print("TEST END: GET ALL IMAGES - coccidia\n")
+
+    def test_get_all_images_xray(self):
+        print("TEST: GET ALL IMAGES - xray")
+        with open("token_admin.txt", "r") as file:
+            token = file.readlines()
+        token = token[0]
+        url = URL + '/api/getallimages?package-id=2'
+        headers = {'TOKEN': token}
+        r = requests.get(url, headers=headers)
+        jsonObj = json.loads(r.content.decode("utf-8"))
+        print(jsonObj)
+        self.assertNotEqual(jsonObj['generated'], [])
+        self.assertNotEqual(jsonObj['uploaded'], [])
+        self.assertEqual(r.status_code, 200)
+        print("TEST END: GET ALL IMAGES - xray\n")
 
     def test_get_all_images_no_images(self):
         print("TEST: GET ALL IMAGES - no images")
         with open("token_user.txt", "r") as file:
             token = file.readlines()
         token = token[0]
-        url = URL + '/api/getallimages'
-        headers = {'token': token, 'package-id': '2'}
+        url = URL + '/api/getallimages?package-id=2'
+        headers = {'TOKEN': token}
         r = requests.get(url, headers=headers)
         jsonObj = json.loads(r.content.decode("utf-8"))
         print(jsonObj)
         self.assertEqual(jsonObj['generated'], [])
         self.assertEqual(jsonObj['uploaded'], [])
         self.assertEqual(r.status_code, 200)
-        print("TEST END: GET ALL IMAGES - no images")
+        print("TEST END: GET ALL IMAGES - no images\n")
+class Test5_MakeNewUser(unittest.TestCase):
+    print("Test Make New User Started")
 
-class Test4_erase(unittest.TestCase):
+    def test0_make_new_user(self):
+        print("TEST: Make new user")
+        url = URL + '/api/makenewuser'
+        with open("token_admin.txt", "r") as file:
+            token = file.readlines()
+        token = token[0]
+        headers = {'TOKEN': token}
+        r = requests.post(url,
+                          json={'username': 'test@test.com', 'password':'Krastavac56', 'name': 'TestName', 'surname': 'TestSurname', 'user_role': 'user'},
+                          headers=headers)
+        jsonObj = json.loads(r.content.decode("utf-8"))
+        print(jsonObj)
+        self.assertEqual(r.status_code, 200)
+        print("TEST END: Make new user\n")
+
+    def test1_make_new_user_user_role(self):
+        print("TEST: Make new user - user role")
+        url = URL + '/api/makenewuser'
+        with open("token_user.txt", "r") as file:
+            token = file.readlines()
+        token = token[0]
+        headers = {'TOKEN': token}
+        r = requests.post(url,
+                          json={'username': 'test@test.com', 'password':'Krastavac56', 'name': 'TestName', 'surname': 'TestSurname', 'user_role': 'user'},
+                          headers=headers)
+        self.assertEqual(r.status_code, 401)
+        print("TEST END: Make new user - user role\n")
+
+    def test2_delete_user(self):
+        print("TEST: Delete user")
+        url = URL + '/api/deleteuser'
+        with open("token_admin.txt", "r") as file:
+            token = file.readlines()
+        token = token[0]
+        headers = {'TOKEN': token}
+        r = requests.post(url,
+                          json={'username': 'test@test.com'},
+                          headers=headers)
+        self.assertEqual(r.status_code, 200)
+        print("TEST END: Delete User\n")
+
+
+class Test9_erase(unittest.TestCase):
     print('Erasing all...')
-    def test_erase_local_files(self):
-
+    def notest_erase_local_files(self):
         url = URL + '/api/eraseLocal'
         r = requests.get(url)
         self.assertEqual(r.status_code, 200)

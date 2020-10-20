@@ -1,17 +1,16 @@
 import os
 from secrets import token_urlsafe
-from image_slicer import slice
+
 import PIL
 from PIL import Image
 from flask import Flask, request, jsonify, make_response, send_file
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+
 from models.experimental import attempt_load
-from sqlalchemy.orm import session, sessionmaker
 from yolov5_server_detect import detect
-from utils.server_utils import make_recieving_img_name, erase_local_files
+from utils.server_utils import make_recieving_img_name, erase_local_files, make_new_user, delete_user
 from flask_cors import CORS
-import glob
-import json
 from utils.RequestValidator import validate_login, validate_token, validate_package
 
 PIL.Image.MAX_IMAGE_PIXELS = 979515483
@@ -19,6 +18,7 @@ app = Flask(__name__)
 app.config.from_object("ServerConfig.Config")
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 db = SQLAlchemy(app)
+
 
 class Img(db.Model):
     __tablename__ = 'img'
@@ -44,7 +44,7 @@ class User(db.Model):
     username = db.Column(db.String(45), unique=True)
     name = db.Column(db.String(45), unique=False)
     surname = db.Column(db.String(45), unique=False)
-    password = db.Column(db.String(45), unique=False)
+    password = db.Column(db.String(128), unique=False)
     thumbnail = db.Column(db.LargeBinary(), unique=False)
     user_role = db.Column(db.Enum('admin', 'user'), unique=False)
     token = db.Column(db.String(200), unique=False)
@@ -53,10 +53,16 @@ class User(db.Model):
         self.username = username
         self.name = name
         self.surname = surname
-        self.password = password
         self.thumbnail = thumbnail
         self.user_role = user_role
         self.token = token
+        self.set_password(password)
+
+    def set_password(self, password):
+        self.password = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password, password)
 
     def __repr__(self):
         return '<User %r>' % self.username
@@ -91,10 +97,9 @@ class Package(db.Model):
 @app.route("/api/getallusers", methods=["GET"])
 def getallusers():
     if request.method == "GET":
-        token = request.headers['token']
-        results = User.query.filter(User.token == token).first()
+        user = validate_token(request, db, User)
 
-        if results is not None and results.user_role == 'admin':
+        if user is not None and user.user_role == 'admin':
             results = User.query.join(Package_User_Cross).join(Package).add_columns(Package.name).all()
             output = {}
             packages = []
@@ -112,11 +117,32 @@ def getallusers():
         else:
             return make_response('{}', 401)
 
+@app.route("/api/makenewuser", methods=["POST"])
+def makenewuser():
+    if request.method == "POST":
+        user = validate_token(request, db, User)
+        json = request.get_json()
+        status, token = make_new_user(user, json, db, User)
+        if token is not None:
+            response_dict = {'msg': 'success', 'token': token}
+            return make_response(jsonify(response_dict), status)
+        if status == 401:
+            return make_response({}, status)
+    return make_response({}, 404)
+
+@app.route("/api/deleteuser", methods=["POST"])
+def deleteuser():
+    if request.method == "POST":
+        user = validate_token(request, db, User)
+        json = request.get_json()
+        status = delete_user(user, json, db, User)
+    return make_response({}, status)
+
 @app.route("/api/getallimages", methods=["GET"])
 def getallimages():
     if request.method == "GET":
-        id = request.headers['package-id']
-        user = validate_token(request,db, User)
+        id = request.args.get('package-id')
+        user = validate_token(request, db, User)
         package_model = Package.query.filter(Package.id == id).first()
 
         if user is not None and package_model is not None:
@@ -141,17 +167,15 @@ def getallimages():
 @app.route("/api/user-account", methods=["GET"])
 def user_account():
     if request.method == "GET":
-        token = request.headers['token']
+        token = request.headers['TOKEN']
         result = User.query.filter(User.token==token).join(Package_User_Cross).join(Package).add_columns(Package.id, Package.type, Package.name).all()
         user = result[0][0]
         packages = []
         for res in result:
             packages.append({'id':res[1], 'type':res[2], 'name':res[3]})
 
-        print(packages)
         if result is not None:
             response_dict = {'msg': 'success', 'token': user.token, 'user_role': user.user_role, 'packages': packages}
-            print(response_dict)
             return make_response(jsonify(response_dict), 200)
         else:
             return make_response('{}', 401)
@@ -178,24 +202,26 @@ def xray_image():
             package_id = package_id[0]
             img = Image.open(request.files['image'])  # recieve image from post
             name = make_recieving_img_name(app.config["XRAY_IMAGE_UPLOADS"])
-            path = os.path.join(app.config["XRAY_IMAGE_UPLOADS"], name)  # make path for recieved img
-            img.save(path, "PNG")  # save recieved img
+            path_in = os.path.join(app.config["XRAY_IMAGE_UPLOADS"], name)  # make path for recieved img
+            img.save(path_in, "PNG")  # save recieved img
 
             # detect on received img
-            saved_path = detect(model=x_ray_model, source=path,
+            path_out = detect(model=x_ray_model, source=path_in,
                                                out=app.config["XRAY_OUTPUT_FOLDER"],
                                                iouThrs=app.config["XRAY_CONF_THRES"],
                                                conf_thres=app.config["XRAY_IOU_THRES"],
                                                agnostic_nms=app.config["XRAY_AGNOSTIC_NMS"],
                                                img_size=app.config["XRAY_IMG_SIZE"])
 
-            img_db = Img(imgpath=path, small_imgpath=path,uploaded=True,package_id=package_id,user_id=user.id)
+            path_in = app.config["XRAY_CDN_IN_PATH"] + name
+            path_out = app.config["XRAY_CDN_OUT_PATH"] + name
+            img_db = Img(imgpath=path_in, small_imgpath=path_in,uploaded=True,package_id=package_id,user_id=user.id)
             db.session.add(img_db)
-            img_db = Img(imgpath=saved_path, small_imgpath=saved_path, uploaded=False, package_id=package_id,user_id=user.id)
+            img_db = Img(imgpath=path_out, small_imgpath=path_out, uploaded=False, package_id=package_id,user_id=user.id)
             db.session.add(img_db)
             db.session.commit()
 
-            return jsonify({'msg': 'success', 'img_path':saved_path})
+            return jsonify({'msg': 'success', 'img_path':path_out})
         else:
             return make_response('{}', 401)
     else:
@@ -220,9 +246,11 @@ def cocidia_image():
                                                conf_thres=app.config["COCCIDIA_IOU_THRES"],
                                                agnostic_nms=app.config["COCCIDIA_AGNOSTIC_NMS"],
                                                img_size=app.config["COCCIDIA_IMG_SIZE"])
-            img_db = Img(imgpath=path, small_imgpath=path, uploaded=True, package_id=package_id, user_id=user.id)
+            path_in = app.config["COCCIDIA_CDN_IN_PATH"] + name
+            path_out = app.config["COCCIDIA_CDN_OUT_PATH"] + name
+            img_db = Img(imgpath=path_in, small_imgpath=path_in, uploaded=True, package_id=package_id, user_id=user.id)
             db.session.add(img_db)
-            img_db = Img(imgpath=saved_path, small_imgpath=saved_path, uploaded=False, package_id=package_id,
+            img_db = Img(imgpath=path_out, small_imgpath=path_out, uploaded=False, package_id=package_id,
                          user_id=user.id)
             db.session.add(img_db)
             db.session.commit()
@@ -256,11 +284,11 @@ def erase_imgs():
     if request.method == "GET":
         num_rows_deleted = db.session.query(Img).delete()
         db.session.commit()
+        db.session.close()
         print('Deleted imgs =',num_rows_deleted)
         erase_local_files()
-
-
         return make_response('{}', 200)
+
 if __name__ == "__main__":
     x_ray_model = attempt_load(app.config["XRAY_WEIGHTS"], map_location='cuda')  # load FP32 model
     coccidia_model = attempt_load(app.config["COCCIDIA_WEIGHTS"], map_location='cuda')

@@ -3,7 +3,7 @@ from secrets import token_urlsafe
 def validate_login(request, db, User):
     json = request.get_json()
     user = User.query.filter(User.username == json['username']).first()
-    if user.password == json['password']:
+    if user.check_password(json['password']):
         token = token_urlsafe(32)
         user.token = token
         db.session.commit()
@@ -12,8 +12,11 @@ def validate_login(request, db, User):
     else:
         return None
 
+def make_new_user():
+    return 2
+
 def validate_token(request, db, User):
-    token = request.headers['token']
+    token = request.headers['TOKEN']
     user = db.session.query(User).filter(User.token==token).first()
     return user
 

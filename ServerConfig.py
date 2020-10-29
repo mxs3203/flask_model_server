@@ -1,8 +1,7 @@
 class Config(object):
-    #Flask
-    #MAX_CONTENT_LENGTH = 16 * 1024 * 1024
+    # Flask
+    # MAX_CONTENT_LENGTH = 16 * 1024 * 1024
     CDN_URL = "http://overunderapi.ddns.net:8080/"
-
 
     # XRay
     XRAY_IMAGE_UPLOADS = "/home/mateo/Desktop/server/images/recievedImgFolder/xray"
@@ -35,7 +34,7 @@ class Config(object):
     NEUTROPHIL_CDN_IN_PATH = CDN_URL + "recievedImgFolder/neutrophil/"
     NEUTROPHIL_CONF_THRES = 0.7
     NEUTROPHIL_IOU_THRES = 0.7
-    NEUTROPHIL_IMG_SIZE =512
+    NEUTROPHIL_IMG_SIZE = 512
 
     # DB
     SQLALCHEMY_DATABASE_URI = 'mysql://root:@localhost:3306/over_under'

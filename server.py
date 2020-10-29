@@ -23,18 +23,18 @@ cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 class Img(db.Model):
     __tablename__ = 'img'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    imgpath = db.Column(db.String(200), unique=True,  nullable = False)
-    imgpath_small = db.Column(db.String(200), unique=True,  nullable = False)
-    generated_imgpath = db.Column(db.String(200), unique=True,  nullable = False)
-    generated_imgpath_small = db.Column(db.String(200), unique=True, nullable = False)
+    imgpath = db.Column(db.String(200), unique=True, nullable=False)
+    imgpath_small = db.Column(db.String(200), unique=True, nullable=False)
+    generated_imgpath = db.Column(db.String(200), unique=True, nullable=False)
+    generated_imgpath_small = db.Column(db.String(200), unique=True, nullable=False)
     desc = db.Column(db.String(500), nullable=True)
     date = db.Column(db.String(100), nullable=False)
     name = db.Column(db.String(45), nullable=False)
     package_id = db.Column(db.Integer, db.ForeignKey('package.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-
-    def __init__(self, imgpath, imgpath_small, generated_imgpath, generated_imgpath_small, package_id, user_id, name, date, desc):
+    def __init__(self, imgpath, imgpath_small, generated_imgpath, generated_imgpath_small, package_id, user_id, name,
+                 date, desc):
         self.imgpath = imgpath
         self.imgpath_small = imgpath_small
         self.generated_imgpath = generated_imgpath
@@ -47,9 +47,11 @@ class Img(db.Model):
 
     def __repr__(self):
         return '<Img %r>' % self.imgpath
+
+
 class User(db.Model):
     __tablename__ = 'user'
-    id = db.Column(db.Integer, primary_key=True,autoincrement=True )
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(45), unique=True)
     name = db.Column(db.String(45), unique=False)
     surname = db.Column(db.String(45), unique=False)
@@ -75,26 +77,30 @@ class User(db.Model):
 
     def __repr__(self):
         return '<User %r>' % self.username
+
+
 class Package_User_Cross(db.Model):
     __tablename__ = 'package_user_cross'
-    id = db.Column(db.Integer, primary_key=True,autoincrement=True )
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     package_id = db.Column(db.Integer, db.ForeignKey('package.id'), nullable=False)
 
-    def __init__(self,id, user_id, package_id):
+    def __init__(self, id, user_id, package_id):
         self.id = id
         self.user_id = user_id
         self.package_id = package_id
 
     def __repr__(self):
         return '<Cross ID %r>' % self.id
+
+
 class Package(db.Model):
     __tablename__ = 'package'
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True )
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(45), nullable=False)
     type = db.Column(db.String(45), nullable=False)
 
-    def __init__(self,id, name, type):
+    def __init__(self, id, name, type):
         self.id = id
         self.name = name
         self.type = type
@@ -118,13 +124,13 @@ def getallusers():
                     packages = []
                 else:
                     output[result[0].username] = {'username': result[0].username, 'name': result[0].name,
-                                              'surname': result[0].surname, 'user_role': result[0].user_role,
-                                              'packages': packages}
-
+                                                  'surname': result[0].surname, 'user_role': result[0].user_role,
+                                                  'packages': packages}
 
             return make_response(output, 200)
         else:
             return make_response('{}', 401)
+
 
 @app.route("/api/makenewuser", methods=["POST"])
 def makenewuser():
@@ -139,6 +145,7 @@ def makenewuser():
             return make_response({}, status)
     return make_response({}, 404)
 
+
 @app.route("/api/deleteuser", methods=["POST"])
 def deleteuser():
     if request.method == "POST":
@@ -146,6 +153,7 @@ def deleteuser():
         json = request.get_json()
         status = delete_user(user, json, db, User)
     return make_response({}, status)
+
 
 @app.route("/api/getallimages", methods=["GET"])
 def getallimages():
@@ -155,7 +163,10 @@ def getallimages():
         package_model = Package.query.filter(Package.id == id).first()
 
         if user is not None and package_model is not None:
-            results = User.query.filter(User.id == user.id).join(Img).join(Package).filter(Package.id == package_model.id).add_columns(Img.imgpath, Img.imgpath_small, Img.generated_imgpath, Img.generated_imgpath_small, Img.name, Img.desc, Img.date).all()
+            results = User.query.filter(User.id == user.id).join(Img).join(Package).filter(
+                Package.id == package_model.id).add_columns(Img.imgpath, Img.imgpath_small, Img.generated_imgpath,
+                                                            Img.generated_imgpath_small, Img.name, Img.desc,
+                                                            Img.date).all()
 
             output = []
             for res in results:
@@ -170,15 +181,18 @@ def getallimages():
         else:
             return make_response('{}', 401)
 
+
 @app.route("/api/user-account", methods=["GET"])
 def user_account():
     if request.method == "GET":
         token = request.headers['TOKEN']
-        result = User.query.filter(User.token==token).join(Package_User_Cross).join(Package).add_columns(Package.id, Package.type, Package.name).all()
+        result = User.query.filter(User.token == token).join(Package_User_Cross).join(Package).add_columns(Package.id,
+                                                                                                           Package.type,
+                                                                                                           Package.name).all()
         user = result[0][0]
         packages = []
         for res in result:
-            packages.append({'id':res[1], 'type':res[2], 'name':res[3]})
+            packages.append({'id': res[1], 'type': res[2], 'name': res[3]})
 
         if result is not None:
             response_dict = {'msg': 'success', 'token': user.token, 'user_role': user.user_role, 'packages': packages}
@@ -186,6 +200,7 @@ def user_account():
         else:
             return make_response('{}', 401)
     return make_response('{}', 404)
+
 
 @app.route("/api/login", methods=["POST"])
 def login():
@@ -197,6 +212,7 @@ def login():
         else:
             return make_response('{}', 401)
     return make_response('{}', 404)
+
 
 @app.route("/api/models/xray", methods=["POST"])
 def xray_image():
@@ -213,11 +229,11 @@ def xray_image():
             jsonObj = validate_upload_img_json(jsonObj, name)
             # detect on received img
             path_out = detect(model=x_ray_model, source=path_in,
-                                               out=app.config["XRAY_OUTPUT_FOLDER"],
-                                               iouThrs=app.config["XRAY_CONF_THRES"],
-                                               conf_thres=app.config["XRAY_IOU_THRES"],
-                                               agnostic_nms=app.config["XRAY_AGNOSTIC_NMS"],
-                                               img_size=app.config["XRAY_IMG_SIZE"])
+                              out=app.config["XRAY_OUTPUT_FOLDER"],
+                              iouThrs=app.config["XRAY_CONF_THRES"],
+                              conf_thres=app.config["XRAY_IOU_THRES"],
+                              agnostic_nms=app.config["XRAY_AGNOSTIC_NMS"],
+                              img_size=app.config["XRAY_IMG_SIZE"])
 
             path_in = app.config["XRAY_CDN_IN_PATH"] + name
             path_out = app.config["XRAY_CDN_OUT_PATH"] + name
@@ -233,11 +249,12 @@ def xray_image():
             db.session.add(img_db)
             db.session.commit()
 
-            return jsonify({'msg': 'success', 'img_path':path_out})
+            return jsonify({'msg': 'success', 'img_path': path_out})
         else:
             return make_response('{}', 401)
     else:
         return jsonify({'msg': 'fail'})
+
 
 @app.route("/api/models/coccidia", methods=["POST"])
 def cocidia_image():
@@ -255,11 +272,11 @@ def cocidia_image():
 
             # detect on received img
             saved_path = detect(model=coccidia_model, source=path,
-                                               out=app.config["COCCIDIA_OUTPUT_FOLDER"],
-                                               iouThrs=app.config["COCCIDIA_CONF_THRES"],
-                                               conf_thres=app.config["COCCIDIA_IOU_THRES"],
-                                               agnostic_nms=app.config["COCCIDIA_AGNOSTIC_NMS"],
-                                               img_size=app.config["COCCIDIA_IMG_SIZE"])
+                                out=app.config["COCCIDIA_OUTPUT_FOLDER"],
+                                iouThrs=app.config["COCCIDIA_CONF_THRES"],
+                                conf_thres=app.config["COCCIDIA_IOU_THRES"],
+                                agnostic_nms=app.config["COCCIDIA_AGNOSTIC_NMS"],
+                                img_size=app.config["COCCIDIA_IMG_SIZE"])
             path_in = app.config["COCCIDIA_CDN_IN_PATH"] + name
             path_out = app.config["COCCIDIA_CDN_OUT_PATH"] + name
             img_db = Img(imgpath=path_in,
@@ -274,11 +291,12 @@ def cocidia_image():
             db.session.add(img_db)
             db.session.commit()
 
-            return jsonify({'msg': 'success', 'img_path':saved_path})
+            return jsonify({'msg': 'success', 'img_path': saved_path})
         else:
             return make_response('{}', 401)
     else:
         return jsonify({'msg': 'fail'})
+
 
 @app.route("/api/models/neutrophil", methods=["POST"])
 def neutrophil_image():
@@ -288,15 +306,16 @@ def neutrophil_image():
         img.save(path, "PNG")  # save recieved img
         # detect on received img
         saved_path = detect(model=neutrophil_model, source=path,
-                                           out=app.config["NEUTROPHIL_OUTPUT_FOLDER"],
-                                           iouThrs=app.config["NEUTROPHIL_CONF_THRES"],
-                                           conf_thres=app.config["NEUTROPHIL_IOU_THRES"],
-                                           agnostic_nms=app.config["NEUTROPHIL_AGNOSTIC_NMS"],
-                                           img_size=app.config["NEUTROPHIL_IMG_SIZE"], names=['neutrophil'])
+                            out=app.config["NEUTROPHIL_OUTPUT_FOLDER"],
+                            iouThrs=app.config["NEUTROPHIL_CONF_THRES"],
+                            conf_thres=app.config["NEUTROPHIL_IOU_THRES"],
+                            agnostic_nms=app.config["NEUTROPHIL_AGNOSTIC_NMS"],
+                            img_size=app.config["NEUTROPHIL_IMG_SIZE"], names=['neutrophil'])
 
         return send_file(saved_path, mimetype="image/png")
     else:
         return jsonify({'msg': 'fail'})
+
 
 @app.route("/api/eraseLocal", methods=["GET"])
 def erase_imgs():
@@ -304,9 +323,10 @@ def erase_imgs():
         num_rows_deleted = db.session.query(Img).delete()
         db.session.commit()
         db.session.close()
-        print('Deleted imgs =',num_rows_deleted)
+        print('Deleted imgs =', num_rows_deleted)
         erase_local_files()
         return make_response('{}', 200)
+
 
 if __name__ == "__main__":
     x_ray_model = attempt_load(app.config["XRAY_WEIGHTS"], map_location='cuda')  # load FP32 model

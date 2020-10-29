@@ -1,5 +1,6 @@
 from secrets import token_urlsafe
 
+
 def validate_login(request, db, User):
     json = request.get_json()
     user = User.query.filter(User.username == json['username']).first()
@@ -12,18 +13,22 @@ def validate_login(request, db, User):
     else:
         return None
 
+
 def make_new_user():
     return 2
 
+
 def validate_token(request, db, User):
     token = request.headers['TOKEN']
-    user = db.session.query(User).filter(User.token==token).first()
+    user = db.session.query(User).filter(User.token == token).first()
     return user
+
 
 def validate_package(request, db, Package):
     id = request.args.get('package-id')
     package_id = Package.query.filter(Package.id == id).with_entities(Package.id).first()
     return package_id
+
 
 def validate_upload_img_json(json, name):
     if json['name'] is '' or json['name'] is None:

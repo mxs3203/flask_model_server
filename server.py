@@ -1,40 +1,49 @@
+import json
 import os
-from secrets import token_urlsafe
 
 import PIL
 from PIL import Image
 from flask import Flask, request, jsonify, make_response, send_file
+from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from models.experimental import attempt_load
-from yolov5_server_detect import detect
+from utils.RequestValidator import validate_login, validate_token, validate_package, validate_upload_img_json
 from utils.server_utils import make_recieving_img_name, erase_local_files, make_new_user, delete_user
-from flask_cors import CORS
-from utils.RequestValidator import validate_login, validate_token, validate_package
+from yolov5_server_detect import detect
 
 PIL.Image.MAX_IMAGE_PIXELS = 979515483
 app = Flask(__name__)
 app.config.from_object("ServerConfig.Config")
-cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 db = SQLAlchemy(app)
+cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 
 class Img(db.Model):
     __tablename__ = 'img'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    imgpath = db.Column(db.String(200), unique=True)
-    small_imgpath = db.Column(db.String(200), unique=True)
-    uploaded = db.Column(db.BOOLEAN, unique=False)
+    imgpath = db.Column(db.String(200), unique=True,  nullable = False)
+    imgpath_small = db.Column(db.String(200), unique=True,  nullable = False)
+    generated_imgpath = db.Column(db.String(200), unique=True,  nullable = False)
+    generated_imgpath_small = db.Column(db.String(200), unique=True, nullable = False)
+    desc = db.Column(db.String(500), nullable=True)
+    date = db.Column(db.String(100), nullable=False)
+    name = db.Column(db.String(45), nullable=False)
     package_id = db.Column(db.Integer, db.ForeignKey('package.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-    def __init__(self, imgpath, small_imgpath, uploaded, package_id, user_id):
+
+    def __init__(self, imgpath, imgpath_small, generated_imgpath, generated_imgpath_small, package_id, user_id, name, date, desc):
         self.imgpath = imgpath
-        self.small_imgpath = small_imgpath
-        self.uploaded = uploaded
+        self.imgpath_small = imgpath_small
+        self.generated_imgpath = generated_imgpath
+        self.generated_imgpath_small = generated_imgpath_small
         self.package_id = package_id
         self.user_id = user_id
+        self.name = name
+        self.date = date
+        self.desc = desc
 
     def __repr__(self):
         return '<Img %r>' % self.imgpath
@@ -146,21 +155,18 @@ def getallimages():
         package_model = Package.query.filter(Package.id == id).first()
 
         if user is not None and package_model is not None:
-            results_uploaded = User.query.filter(User.id == user.id).join(Img).join(Package).filter(Package.id == package_model.id).add_columns(Img.imgpath, Img.uploaded).filter(Img.uploaded == True).all()
-            results_generated = User.query.filter(User.id == user.id).join(Img).join(Package).filter(Package.id == package_model.id).add_columns(Img.imgpath, Img.uploaded).filter(Img.uploaded == False).all()
+            results = User.query.filter(User.id == user.id).join(Img).join(Package).filter(Package.id == package_model.id).add_columns(Img.imgpath, Img.imgpath_small, Img.generated_imgpath, Img.generated_imgpath_small, Img.name, Img.desc, Img.date).all()
 
-            output = {}
-            cnt = 0
-            uploaded = []
-            generated = []
-            for res in results_uploaded:
-                generated.append(results_generated[cnt][1])
-                uploaded.append(res[1])
-                cnt = cnt + 1
-            output['generated'] = generated
-            output['uploaded'] = uploaded
-            output['onlySmallImgs'] = True
-            return make_response(output, 200)
+            output = []
+            for res in results:
+                output.append({'generated': res[3],
+                               'generated_small': res[4],
+                               'uploaded': res[1],
+                               'uploaded_small': res[2],
+                               'name': res[5],
+                               'desc': res[6],
+                               'date': res[7]})
+            return make_response(jsonify(output), 200)
         else:
             return make_response('{}', 401)
 
@@ -192,19 +198,19 @@ def login():
             return make_response('{}', 401)
     return make_response('{}', 404)
 
-@app.route("/models/xray", methods=["POST"])
+@app.route("/api/models/xray", methods=["POST"])
 def xray_image():
     if request.method == "POST" and request.files:
         user = validate_token(request, db, User)
         package_id = validate_package(request, db, Package)
-
         if user is not None and package_id is not None:
             package_id = package_id[0]
             img = Image.open(request.files['image'])  # recieve image from post
             name = make_recieving_img_name(app.config["XRAY_IMAGE_UPLOADS"])
             path_in = os.path.join(app.config["XRAY_IMAGE_UPLOADS"], name)  # make path for recieved img
             img.save(path_in, "PNG")  # save recieved img
-
+            jsonObj = json.load(request.files['json'])
+            jsonObj = validate_upload_img_json(jsonObj, name)
             # detect on received img
             path_out = detect(model=x_ray_model, source=path_in,
                                                out=app.config["XRAY_OUTPUT_FOLDER"],
@@ -215,9 +221,15 @@ def xray_image():
 
             path_in = app.config["XRAY_CDN_IN_PATH"] + name
             path_out = app.config["XRAY_CDN_OUT_PATH"] + name
-            img_db = Img(imgpath=path_in, small_imgpath=path_in,uploaded=True,package_id=package_id,user_id=user.id)
-            db.session.add(img_db)
-            img_db = Img(imgpath=path_out, small_imgpath=path_out, uploaded=False, package_id=package_id,user_id=user.id)
+            img_db = Img(imgpath=path_in,
+                         imgpath_small=path_in,
+                         generated_imgpath=path_out,
+                         generated_imgpath_small=path_out,
+                         package_id=package_id,
+                         user_id=user.id,
+                         name=jsonObj['name'],
+                         desc=jsonObj['desc'],
+                         date=jsonObj['date'])
             db.session.add(img_db)
             db.session.commit()
 
@@ -227,7 +239,7 @@ def xray_image():
     else:
         return jsonify({'msg': 'fail'})
 
-@app.route("/models/coccidia", methods=["POST"])
+@app.route("/api/models/coccidia", methods=["POST"])
 def cocidia_image():
     if request.method == "POST" and request.files:
         user = validate_token(request, db, User)
@@ -235,9 +247,11 @@ def cocidia_image():
 
         if user is not None and package_id is not None:
             img = Image.open(request.files['image'])  # recieve image from post
-            name = make_recieving_img_name(app.config["XRAY_IMAGE_UPLOADS"])
+            name = make_recieving_img_name(app.config["COCCIDIA_IMAGE_UPLOADS"])
             path = os.path.join(app.config["COCCIDIA_IMAGE_UPLOADS"], name)  # make path for recieved img
             img.save(path, "PNG")  # save recieved img
+            jsonObj = json.load(request.files['json'])
+            jsonObj = validate_upload_img_json(jsonObj, name)
 
             # detect on received img
             saved_path = detect(model=coccidia_model, source=path,
@@ -248,10 +262,15 @@ def cocidia_image():
                                                img_size=app.config["COCCIDIA_IMG_SIZE"])
             path_in = app.config["COCCIDIA_CDN_IN_PATH"] + name
             path_out = app.config["COCCIDIA_CDN_OUT_PATH"] + name
-            img_db = Img(imgpath=path_in, small_imgpath=path_in, uploaded=True, package_id=package_id, user_id=user.id)
-            db.session.add(img_db)
-            img_db = Img(imgpath=path_out, small_imgpath=path_out, uploaded=False, package_id=package_id,
-                         user_id=user.id)
+            img_db = Img(imgpath=path_in,
+                         imgpath_small=path_in,
+                         generated_imgpath=path_out,
+                         generated_imgpath_small=path_out,
+                         package_id=package_id,
+                         user_id=user.id,
+                         name=jsonObj['name'],
+                         desc=jsonObj['desc'],
+                         date=jsonObj['date'])
             db.session.add(img_db)
             db.session.commit()
 
@@ -261,7 +280,7 @@ def cocidia_image():
     else:
         return jsonify({'msg': 'fail'})
 
-@app.route("/models/neutrophil", methods=["POST"])
+@app.route("/api/models/neutrophil", methods=["POST"])
 def neutrophil_image():
     if request.method == "POST" and request.files:
         img = Image.open(request.files['image'])  # recieve image from post

@@ -3,7 +3,6 @@ import json
 import PIL
 import requests
 from PIL import Image
-import os
 import unittest
 PIL.Image.MAX_IMAGE_PIXELS = 979515483
 
@@ -14,14 +13,14 @@ class Test1_LoginAPI(unittest.TestCase):
     def test_incorrect_login(self):
         print("TEST: Incorrect LOGIN :")
         url = URL + '/api/login'
-        r = requests.post(url, json={'username': 'filipos', 'password':'krivipass'})
+        r = requests.post(url, json={'username': 'mateo', 'password':'krivipass'})
         self.assertEqual(r.status_code, 401)
         print("TEST END: Incorrect LOGIN :\n")
 
     def test_correct_login_admin(self):
         print("TEST: Correct LOGIN admin:")
         url = URL + '/api/login'
-        r = requests.post(url, json={'username': 'filipos', 'password':'Krastavac56'})
+        r = requests.post(url, json={'username': 'mateo', 'password':'Krastavac56'})
         jsonObj = json.loads(r.content.decode("utf-8"))
         token = jsonObj['token']
 
@@ -67,11 +66,61 @@ class Test2_ModelAPI(unittest.TestCase):
         with open("token_admin.txt", "r") as file:
             token = file.readlines()
         token = token[0]
-        url = URL + '/models/xray'
+        url = URL + '/api/models/xray?package-id=2'
         img_file = open('test1.jpg', 'rb')
-        my_img = {'image': img_file}
-        headers = {'TOKEN': token, 'package-id':'2'}
-        r = requests.post(url, files=my_img, headers=headers)
+        headers = {'TOKEN': token}
+        data = {'desc': ' vidi kako je ova slikda dobra', 'name': 'Lepo ko Greh xray ', 'date': '2/12/2011'}
+        files = [
+            ('image', ('test1.jpg', img_file, 'application/octet')),
+            ('json', ('json', json.dumps(data), 'application/json')),
+        ]
+        r = requests.post(url, files=files, headers=headers)
+        jsonObj = json.loads(r.content.decode("utf-8"))
+        img_file.close()
+
+        self.assertIsNotNone(jsonObj)
+        self.assertIsNotNone(jsonObj['img_path'])
+        self.assertEqual(r.status_code, 200)
+
+        print("TEST END: XRAY Model\n")
+
+    def test_xray_no_name(self):
+        print("TEST XRAY Model")
+        with open("token_admin.txt", "r") as file:
+            token = file.readlines()
+        token = token[0]
+        url = URL + '/api/models/xray?package-id=2'
+        img_file = open('test1.jpg', 'rb')
+        headers = {'TOKEN': token}
+        data = {'desc': '', 'name': '', 'date': '2/12/2011'}
+        files = [
+            ('image', ('test1.jpg', img_file, 'application/octet')),
+            ('json', ('json', json.dumps(data), 'application/json')),
+        ]
+        r = requests.post(url, files=files, headers=headers)
+        jsonObj = json.loads(r.content.decode("utf-8"))
+        img_file.close()
+
+        self.assertIsNotNone(jsonObj)
+        self.assertIsNotNone(jsonObj['img_path'])
+        self.assertEqual(r.status_code, 200)
+
+        print("TEST END: XRAY Model\n")
+
+    def test_xray_with_none(self):
+        print("TEST XRAY Model")
+        with open("token_admin.txt", "r") as file:
+            token = file.readlines()
+        token = token[0]
+        url = URL + '/api/models/xray?package-id=2'
+        img_file = open('test1.jpg', 'rb')
+        headers = {'TOKEN': token}
+        data = {'desc': None, 'name': None, 'date': None}
+        files = [
+            ('image', ('test1.jpg', img_file, 'application/octet')),
+            ('json', ('json', json.dumps(data), 'application/json')),
+        ]
+        r = requests.post(url, files=files, headers=headers)
         jsonObj = json.loads(r.content.decode("utf-8"))
         img_file.close()
 
@@ -84,11 +133,15 @@ class Test2_ModelAPI(unittest.TestCase):
     def test_xray_wrong_token(self):
         print("TEST: XRAY Model wrong token")
         token = "wrongtoken1294uhjnmds"
-        url = URL + '/models/xray'
+        url = URL + '/api/models/xray?package-id=2'
         img_file = open('test1.jpg', 'rb')
-        my_img = {'image': img_file}
-        headers = {'TOKEN': token, 'package-id': '2'}
-        r = requests.post(url, files=my_img, headers=headers)
+        headers = {'TOKEN': token}
+        data = {'desc': ' alo bre dobra slika', 'name': 'Lepo ko Greh xray ', 'date': '1/12/2020'}
+        files = [
+            ('image', ('test1.jpg', img_file, 'application/octet')),
+            ('json', ('json', json.dumps(data), 'application/json')),
+        ]
+        r = requests.post(url, files=files, headers=headers)
         img_file.close()
 
         self.assertEqual(r.status_code, 401)
@@ -99,11 +152,15 @@ class Test2_ModelAPI(unittest.TestCase):
         with open("token_admin.txt", "r") as file:
             token = file.readlines()
         token = token[0]
-        url = URL + '/models/xray'
+        url = URL + '/api/models/xray?package-id=dfs'
         img_file = open('test1.jpg', 'rb')
-        my_img = {'image': img_file}
-        headers = {'TOKEN': token, 'package-id': 'jkgasjh'}
-        r = requests.post(url, files=my_img, headers=headers)
+        headers = {'TOKEN': token}
+        data = {'desc': ' alo bre dobra slika', 'name': 'Lepo ko Greh xray ', 'date': '1/12/2020'}
+        files = [
+            ('image', ('test1.jpg', img_file, 'application/octet')),
+            ('json', ('json', json.dumps(data), 'application/json')),
+        ]
+        r = requests.post(url, files=files, headers=headers)
         img_file.close()
 
         self.assertEqual(r.status_code, 401)
@@ -114,11 +171,17 @@ class Test2_ModelAPI(unittest.TestCase):
         with open("token_admin.txt", "r") as file:
             token = file.readlines()
         token = token[0]
-        url = URL + '/models/coccidia'
+        url = URL + '/api/models/coccidia?package-id=1'
         img_file = open('test2.jpg', 'rb')
-        my_img = {'image': img_file}
-        headers = {'TOKEN': token, 'package-id': '1'}
-        r = requests.post(url, files=my_img, headers=headers)
+        #my_img = {'image': img_file}
+        data = {'desc': ' ovo je mnogo lepa slika. ', 'name': 'Lepo ko Greh', 'date':'1/1/2020'}
+        headers = {'TOKEN': token}
+        files = [
+            ('image', ('test2.jpg', img_file, 'application/octet')),
+            ('json', ('json', json.dumps(data), 'application/json')),
+        ]
+
+        r = requests.post(url, files=files, headers=headers)
         jsonObj = json.loads(r.content.decode("utf-8"))
         img_file.close()
 
@@ -195,8 +258,7 @@ class Test3_APIEndpoints(unittest.TestCase):
         r = requests.get(url, headers=headers)
         jsonObj = json.loads(r.content.decode("utf-8"))
         print(jsonObj)
-        self.assertNotEqual(jsonObj['generated'], [])
-        self.assertNotEqual(jsonObj['uploaded'], [])
+        self.assertIsNotNone(jsonObj)
         self.assertEqual(r.status_code, 200)
         print("TEST END: GET ALL IMAGES - coccidia\n")
 
@@ -210,8 +272,7 @@ class Test3_APIEndpoints(unittest.TestCase):
         r = requests.get(url, headers=headers)
         jsonObj = json.loads(r.content.decode("utf-8"))
         print(jsonObj)
-        self.assertNotEqual(jsonObj['generated'], [])
-        self.assertNotEqual(jsonObj['uploaded'], [])
+        self.assertIsNotNone(jsonObj)
         self.assertEqual(r.status_code, 200)
         print("TEST END: GET ALL IMAGES - xray\n")
 
@@ -225,8 +286,7 @@ class Test3_APIEndpoints(unittest.TestCase):
         r = requests.get(url, headers=headers)
         jsonObj = json.loads(r.content.decode("utf-8"))
         print(jsonObj)
-        self.assertEqual(jsonObj['generated'], [])
-        self.assertEqual(jsonObj['uploaded'], [])
+        self.assertIsNotNone(jsonObj)
         self.assertEqual(r.status_code, 200)
         print("TEST END: GET ALL IMAGES - no images\n")
 class Test5_MakeNewUser(unittest.TestCase):
@@ -276,7 +336,7 @@ class Test5_MakeNewUser(unittest.TestCase):
 
 class Test9_erase(unittest.TestCase):
     print('Erasing all...')
-    def notest_erase_local_files(self):
+    def test_erase_local_files(self):
         url = URL + '/api/eraseLocal'
         r = requests.get(url)
         self.assertEqual(r.status_code, 200)

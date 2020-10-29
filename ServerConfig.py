@@ -1,7 +1,7 @@
 class Config(object):
     #Flask
     #MAX_CONTENT_LENGTH = 16 * 1024 * 1024
-    CDN_URL = "http://over_under_cdn.local/"
+    CDN_URL = "http://overunderapi.ddns.net:8080/"
 
 
     # XRay
@@ -9,7 +9,7 @@ class Config(object):
     XRAY_WEIGHTS = "runs/xray_airport_x/exp0_xray_airport_x/weights/best.pt"
     XRAY_AGNOSTIC_NMS = True
     XRAY_CDN_OUT_PATH = CDN_URL + "serverOutput/xray/"
-    XRAY_CDN_IN_PATH = CDN_URL + "recievedImgFolder/xray"
+    XRAY_CDN_IN_PATH = CDN_URL + "recievedImgFolder/xray/"
     XRAY_OUTPUT_FOLDER = "/home/mateo/Desktop/server/images/serverOutput/xray"
     XRAY_CONF_THRES = 0.5
     XRAY_IOU_THRES = 0.5

@@ -21,6 +21,15 @@ def validate_token(request, db, User):
     return user
 
 def validate_package(request, db, Package):
-    id = request.headers['package-id']
+    id = request.args.get('package-id')
     package_id = Package.query.filter(Package.id == id).with_entities(Package.id).first()
     return package_id
+
+def validate_upload_img_json(json, name):
+    if json['name'] is '' or json['name'] is None:
+        json['name'] = name
+    if json['desc'] is '' or json['desc'] is None:
+        json['desc'] = ''
+    if json['date'] is '' or json['date'] is None:
+        json['date'] = ''
+    return json
